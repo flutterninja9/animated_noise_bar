@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_voice_processor/flutter_voice_processor.dart';
 import 'package:noise_meter/noise_meter.dart';
 
 void main() {
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: MyHomePage2(),
     );
   }
 }
@@ -30,8 +31,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool _isRecording = false;
   double _dB = 0.0;
+  bool _isRecording = false;
   late final NoiseMeter _meter;
   late StreamSubscription<NoiseReading> _noiseSubscription;
 
@@ -64,7 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void onError(Object error) {
+  void onError(Object error, StackTrace stackTrace) {
     print(error.toString());
     _isRecording = false;
   }
@@ -89,6 +90,66 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _isRecording ? stop() : start(),
         child: _isRecording ? Icon(Icons.stop) : Icon(Icons.mic),
+      ),
+    );
+  }
+}
+
+class MyHomePage2 extends StatefulWidget {
+  const MyHomePage2({Key? key}) : super(key: key);
+
+  @override
+  _MyHomePage2State createState() => _MyHomePage2State();
+}
+
+class _MyHomePage2State extends State<MyHomePage2> {
+  int frameLength = 512;
+  int sampleRate = 16000;
+
+  late final VoiceProcessor _voiceProcessor;
+
+  @override
+  void dispose() {
+    _voiceProcessor.stop();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _voiceProcessor = VoiceProcessor.getVoiceProcessor(
+      frameLength,
+      sampleRate,
+    );
+    _voiceProcessor.addListener((buffer) {
+      log(buffer);
+    });
+  }
+
+  Future<void> start() async {
+    try {
+      if (await _voiceProcessor.hasRecordAudioPermission() ?? false) {
+        await _voiceProcessor.start();
+      } else {
+        print("Recording permission not granted");
+      }
+    } on PlatformException catch (ex) {
+      print("Failed to start recorder: " + ex.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Animated NoiseBar"),
+      ),
+      body: Center(
+        child: Text("OK"),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: start,
+        child: Icon(Icons.mic),
       ),
     );
   }
